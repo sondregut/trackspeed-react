@@ -40,17 +40,18 @@ const withSlitScanPlugin = (config) => {
     };
 
     // Add FrameProcessors group and file
-    const frameProcessorsGroupKey = findOrCreateGroup('FrameProcessors', 'FrameProcessors');
+    // Group path is relative to ios/, file path is just filename since group handles directory
+    const frameProcessorsGroupKey = findOrCreateGroup('FrameProcessors', `${projectName}/FrameProcessors`);
     xcodeProject.addSourceFile(
-      'FrameProcessors/SlitScanMVP.mm',
+      'SlitScanMVP.mm',
       { target: xcodeProject.getFirstTarget().uuid },
       frameProcessorsGroupKey
     );
 
     // Add Race group and files
-    const raceGroupKey = findOrCreateGroup('Race', 'Race');
+    const raceGroupKey = findOrCreateGroup('Race', `${projectName}/Race`);
 
-    // Add Race module source files
+    // Add Race module source files - just filenames, group path handles directory
     const raceFiles = [
       'RaceSyncModule.swift',
       'RaceSyncModule.m',
@@ -60,7 +61,7 @@ const withSlitScanPlugin = (config) => {
 
     for (const file of raceFiles) {
       xcodeProject.addSourceFile(
-        `Race/${file}`,
+        file,
         { target: xcodeProject.getFirstTarget().uuid },
         raceGroupKey
       );

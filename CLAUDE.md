@@ -1,32 +1,19 @@
-# SprintTimerMVP - Claude Code Notes
+# SprintTimerMVP
 
-## Development Commands
+## IMPORTANT
 
-### Run app with logs on device
+**NEVER build or run the app.** The user will ALWAYS build and run manually. Only make code changes.
+
+## Build & Run (User runs this)
+
 ```bash
-npx expo run:ios --device "Sondre (2)"
-```
-
-### Build only (no logs)
-```bash
-cd ios && xcodebuild -workspace SprintTimerMVP.xcworkspace -scheme SprintTimerMVP -configuration Debug -destination "name=Sondre (2)" -derivedDataPath build
-```
-
-### Install and launch (no logs)
-```bash
-xcrun devicectl device install app --device "Sondre (2)" ios/build/Build/Products/Debug-iphoneos/SprintTimerMVP.app && xcrun devicectl device process launch --device "Sondre (2)" com.sprinttimer.mvp
-```
-
-### Pod install
-```bash
-cd ios && pod install
+npm install && npx expo prebuild --platform ios --clean && npx expo run:ios --device "Sondre (2)"
 ```
 
 ## Key Files
 
-- Native frame processor: `ios/SprintTimerMVP/FrameProcessors/SlitScanMVP.mm`
+- Native frame processor: `native/FrameProcessors/SlitScanMVP.mm` (source of truth)
 - Setup screen: `src/screens/SetupScreen.tsx`
-- Debug frame viewer: `src/screens/DebugFrameViewer.tsx`
 - Types: `src/types.ts`
 
 ## Detection Parameters (SlitScanMVP.mm)
