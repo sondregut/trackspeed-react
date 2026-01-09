@@ -113,6 +113,15 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header with Back button */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={onReset}>
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Results</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Time Display */}
         <View style={styles.timeContainer}>
@@ -123,14 +132,30 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
           </Text>
         </View>
 
-        {/* Trigger Frame - Shows the exact frame when crossing was detected */}
+        {/* Debug Frames Button - Prominent placement */}
+        {onOpenDebugViewer && (
+          <TouchableOpacity
+            style={styles.debugButtonProminent}
+            onPress={handleExportDebugFrames}
+            disabled={isExportingDebug}
+          >
+            <Text style={styles.debugButtonProminentText}>
+              {isExportingDebug ? 'Loading Frames...' : '🎬 View All Frames (Scrubber)'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {debugExportError && (
+          <Text style={styles.debugErrorTop}>{debugExportError}</Text>
+        )}
+
+        {/* Trigger Frame - Main display showing exact crossing moment */}
         {stats.triggerFramePath && (
-          <View style={styles.compositeContainer}>
-            <Text style={styles.compositeLabel}>Trigger Frame (Detection Moment)</Text>
-            <View style={styles.imageWrapper}>
+          <View style={styles.mainImageContainer}>
+            <Text style={styles.mainImageLabel}>Crossing Frame</Text>
+            <View style={styles.mainImageWrapper}>
               <Image
                 source={{ uri: `file://${stats.triggerFramePath}` }}
-                style={styles.triggerFrameImage}
+                style={styles.mainImage}
                 resizeMode="contain"
               />
               {/* Gate line overlay - shows where measurement was taken */}
@@ -141,35 +166,14 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
                 ]}
               />
             </View>
-            <Text style={styles.compositeHelp}>
-              Exact frame when crossing was detected. Red line = gate/measurement position.
-            </Text>
           </View>
         )}
-
-        {/* Composite Image */}
-        <View style={styles.compositeContainer}>
-          <Text style={styles.compositeLabel}>Photo-Finish Composite</Text>
-          <View style={styles.imageWrapper}>
-            <Image
-              source={{ uri: `file://${stats.compositePath}` }}
-              style={styles.compositeImage}
-              resizeMode="contain"
-            />
-            {/* Trigger line indicator */}
-            <View style={styles.triggerLine} />
-            <Text style={styles.triggerLabel}>Trigger Point</Text>
-          </View>
-          <Text style={styles.compositeHelp}>
-            Time flows left to right. Vertical slice = gate position over time.
-          </Text>
-        </View>
 
         {/* Quick Stats */}
         <View style={styles.quickStatsContainer}>
           <View style={styles.quickStatRow}>
             <View style={styles.quickStat}>
-              <Text style={styles.quickStatValue}>{stats.actualFps}</Text>
+              <Text style={styles.quickStatValue}>{stats.actualFps.toFixed(2)}</Text>
               <Text style={styles.quickStatLabel}>FPS</Text>
             </View>
             <View style={styles.quickStat}>
@@ -205,7 +209,7 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
               <Text style={styles.statsSectionTitle}>Timing</Text>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Trigger PTS</Text>
-                <Text style={styles.statValue}>{stats.triggerPTS.toFixed(6)}</Text>
+                <Text style={styles.statValue}>{stats.triggerPTS.toFixed(3)}</Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Trigger Frame #</Text>
@@ -234,7 +238,7 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Actual FPS</Text>
-                <Text style={styles.statValue}>{stats.actualFps}</Text>
+                <Text style={styles.statValue}>{stats.actualFps.toFixed(2)}</Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Frame Drops</Text>
@@ -249,7 +253,7 @@ export default function ResultsScreen({ stats, onReset, onOpenDebugViewer }: Pro
               <Text style={styles.statsSectionTitle}>Detection</Text>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Peak r-value</Text>
-                <Text style={styles.statValue}>{stats.peakRValue.toFixed(4)}</Text>
+                <Text style={styles.statValue}>{stats.peakRValue.toFixed(3)}</Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>r-threshold</Text>
@@ -359,6 +363,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
+  },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  headerSpacer: {
+    width: 60,
+  },
   scrollContent: {
     padding: 20,
   },
@@ -367,7 +395,49 @@ const styles = StyleSheet.create({
     paddingVertical: 30,
     backgroundColor: '#111',
     borderRadius: 16,
-    marginBottom: 20,
+    marginBottom: 12,
+  },
+  debugButtonProminent: {
+    backgroundColor: '#007AFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  debugButtonProminentText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  debugErrorTop: {
+    color: '#ff4444',
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  mainImageContainer: {
+    backgroundColor: '#111',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  mainImageLabel: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  mainImageWrapper: {
+    position: 'relative',
+    backgroundColor: '#000',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  mainImage: {
+    width: SCREEN_WIDTH - 72,
+    height: 300,
+    backgroundColor: '#222',
   },
   timeLabel: {
     color: '#888',

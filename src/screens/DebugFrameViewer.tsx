@@ -35,10 +35,10 @@ export default function DebugFrameViewer({
   onClose,
   onSelectCrossing,
 }: Props) {
-  // Find the trigger frame - use provided index or find first frame where r >= 0.10
+  // Find the trigger frame - use provided index or find first frame where r >= 0.20
   const triggerFrameIndex = providedTriggerIndex !== undefined && providedTriggerIndex >= 0
     ? providedTriggerIndex
-    : frames.findIndex(f => f.r >= 0.10);
+    : frames.findIndex(f => f.r >= 0.20);
 
   // Start at trigger frame if available, otherwise start at 0
   const initialIndex = triggerFrameIndex >= 0 ? triggerFrameIndex : 0;
@@ -77,7 +77,11 @@ export default function DebugFrameViewer({
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Frame display */}
         <View style={styles.frameContainer}>
-          <View style={[styles.imageWrapper, { width: displayWidth, height: displayHeight }]}>
+          <View style={[
+            styles.imageWrapper,
+            { width: displayWidth, height: displayHeight },
+            { borderColor: currentIndex === triggerFrameIndex ? '#ff0' : 'transparent' }
+          ]}>
             {currentFrame && (
               <>
                 <Image
@@ -99,6 +103,12 @@ export default function DebugFrameViewer({
                     { left: manualLineX * displayWidth },
                   ]}
                 />
+                {/* Trigger indicator - positioned absolutely to avoid layout shift */}
+                {currentIndex === triggerFrameIndex && (
+                  <View style={styles.triggerOverlay}>
+                    <Text style={styles.triggerOverlayText}>TRIGGER</Text>
+                  </View>
+                )}
               </>
             )}
           </View>
@@ -107,18 +117,16 @@ export default function DebugFrameViewer({
           <View style={styles.frameInfo}>
             <Text style={styles.frameText}>
               Frame {currentIndex + 1} / {frames.length}
-              {currentIndex === triggerFrameIndex && (
-                <Text style={styles.triggerIndicator}> [TRIGGER FRAME]</Text>
-              )}
+              {currentIndex === triggerFrameIndex && ' [TRIGGER]'}
             </Text>
             <Text style={styles.frameText}>
-              r-value: {currentFrame?.r.toFixed(4)}
-              <Text style={currentFrame?.r >= 0.10 ? styles.triggerYes : styles.triggerNo}>
-                {currentFrame?.r >= 0.10 ? ' (TRIGGERS)' : ' (below threshold)'}
+              r-value: {currentFrame?.r.toFixed(3)}
+              <Text style={currentFrame?.r >= 0.20 ? styles.triggerYes : styles.triggerNo}>
+                {currentFrame?.r >= 0.20 ? ' (triggered)' : ''}
               </Text>
             </Text>
             <Text style={styles.frameText}>
-              PTS: {currentFrame?.pts.toFixed(6)}s
+              PTS: {currentFrame?.pts.toFixed(3)}s
             </Text>
           </View>
         </View>
@@ -196,7 +204,7 @@ export default function DebugFrameViewer({
                     styles.rValueBar,
                     {
                       height: Math.max(2, height),
-                      backgroundColor: frame.r >= 0.10 ? '#ff4444' : '#44ff44',
+                      backgroundColor: frame.r >= 0.20 ? '#ff4444' : '#44ff44',
                       opacity: isCurrentFrame ? 1 : 0.5,
                       borderColor: isTriggerFrame ? '#ffff00' : 'transparent',
                       borderWidth: isTriggerFrame ? 2 : 0,
@@ -208,7 +216,7 @@ export default function DebugFrameViewer({
             })}
           </View>
           <View style={styles.thresholdLine}>
-            <Text style={styles.thresholdText}>10% threshold</Text>
+            <Text style={styles.thresholdText}>20% threshold</Text>
           </View>
 
           {showAllRValues && (
@@ -219,7 +227,7 @@ export default function DebugFrameViewer({
                   style={[
                     styles.rValueItem,
                     idx === currentIndex && styles.rValueItemCurrent,
-                    frame.r >= 0.10 && styles.rValueItemTrigger,
+                    frame.r >= 0.20 && styles.rValueItemTrigger,
                   ]}
                 >
                   {idx}: {frame.r.toFixed(3)}
@@ -283,6 +291,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 3, // Always have border for consistent sizing
+  },
+  triggerOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(255, 255, 0, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  triggerOverlayText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '700',
   },
   gateLine: {
     position: 'absolute',

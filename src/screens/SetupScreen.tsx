@@ -17,10 +17,10 @@ import {
 } from 'react-native-vision-camera';
 import { useSharedValue, useRunOnJS } from 'react-native-worklets-core';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import { useAudioPlayer } from 'expo-audio';
 import * as SlitScan from '../native/SlitScan';
-import type { CaptureStats } from '../../App';
+import type { CaptureStats } from '../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -69,14 +69,16 @@ const SHOW_DEBUG_OVERLAY = true;
 
 interface Props {
   onResult: (stats: CaptureStats) => void;
+  onBack?: () => void;
 }
 
-export default function SetupScreen({ onResult }: Props) {
+export default function SetupScreen({ onResult, onBack }: Props) {
   // Camera position state (front/back)
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back');
 
-  // Flash/torch state
+  // Flash/torch state - use ref + state to avoid worklet issues
   const [torchOn, setTorchOn] = useState(false);
+  const torchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Camera
   const device = useCameraDevice(cameraPosition);
@@ -133,31 +135,54 @@ export default function SetupScreen({ onResult }: Props) {
   // Refs
   const cameraRef = useRef<Camera>(null);
 
-  // Trigger feedback - flash and sound
+  // Audio player for trigger sound (expo-audio hook)
+  const triggerPlayer = useAudioPlayer(require('../../assets/beep.wav'));
+
+  // Trigger feedback - haptics + torch flash + sound
   const playTriggerFeedback = useCallback(async () => {
-    // Flash the torch briefly - only if device has torch (back camera)
-    if (device?.hasTorch) {
-      setTorchOn(true);
-      setTimeout(() => setTorchOn(false), 150);
+    // Play sound using expo-audio
+    try {
+      triggerPlayer.seekTo(0);
+      triggerPlayer.play();
+    } catch (error) {
+      console.warn('[Audio] Error playing sound:', error);
     }
 
-    // Heavy haptic feedback
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    // Haptic feedback (wrapped in try-catch for safety)
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.warn('[Haptics] Error:', error);
+    }
 
-    // Play beep sound using system sound (no audio file needed)
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [device?.hasTorch]);
+    // Torch flash - only if device has torch (back camera)
+    if (device?.hasTorch) {
+      if (torchTimeoutRef.current) {
+        clearTimeout(torchTimeoutRef.current);
+      }
+      setTorchOn(true);
+      torchTimeoutRef.current = setTimeout(() => setTorchOn(false), 150);
+    }
+  }, [device?.hasTorch, triggerPlayer]);
 
   // Update line position in worklet
   useEffect(() => {
     currentLineX.value = lineX;
   }, [lineX, currentLineX]);
 
+  // Wrap setLineX for use from gesture handler
+  const updateLineX = useCallback((newX: number) => {
+    setLineX(newX);
+  }, []);
+  const runUpdateLineX = useRunOnJS(updateLineX, [updateLineX]);
+
   // Gate line drag gesture
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
+      'worklet';
       const newX = Math.max(0, Math.min(1, event.x / SCREEN_WIDTH));
-      setLineX(newX);
+      runUpdateLineX(newX);
     });
 
   // Callbacks from worklet
@@ -570,6 +595,16 @@ export default function SetupScreen({ onResult }: Props) {
           >
             <Text style={styles.flipButtonText}>Flip</Text>
           </TouchableOpacity>
+
+          {/* Close/Back button */}
+          {onBack && (
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={onBack}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </GestureDetector>
 
@@ -807,6 +842,24 @@ const styles = StyleSheet.create({
   flipButtonText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    left: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 20,
     fontWeight: '600',
   },
 });
