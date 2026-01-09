@@ -51,7 +51,7 @@ export default function RaceRoleSelect() {
           }
         >
           <View style={styles.roleIcon}>
-            <Ionicons name="checkered-flag" size={32} color="#FF9500" />
+            <Ionicons name="trophy" size={32} color="#FF9500" />
           </View>
           <View style={styles.roleContent}>
             <Text style={styles.roleTitle}>Finish Phone</Text>

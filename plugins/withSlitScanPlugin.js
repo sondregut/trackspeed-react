@@ -111,8 +111,8 @@ const withSlitScanPlugin = (config) => {
       const projectRoot = config.modRequest.projectRoot;
       const projectName = config.modRequest.projectName || 'SprintTimerMVP';
 
-      // Copy FrameProcessors files
-      const frameProcessorsSrcDir = path.join(projectRoot, 'ios', 'SprintTimerMVP', 'FrameProcessors');
+      // Copy FrameProcessors files from native/ directory (persistent, not in ios/)
+      const frameProcessorsSrcDir = path.join(projectRoot, 'native', 'FrameProcessors');
       const frameProcessorsDestDir = path.join(projectRoot, 'ios', projectName, 'FrameProcessors');
 
       if (!fs.existsSync(frameProcessorsDestDir)) {
@@ -126,11 +126,13 @@ const withSlitScanPlugin = (config) => {
         if (fs.existsSync(srcPath)) {
           fs.copyFileSync(srcPath, destPath);
           console.log(`Copied ${file} to ${destPath}`);
+        } else {
+          console.warn(`Warning: Source file not found: ${srcPath}`);
         }
       }
 
-      // Copy Race module files
-      const raceSrcDir = path.join(projectRoot, 'ios', 'SprintTimerMVP', 'Race');
+      // Copy Race module files from native/ directory (persistent, not in ios/)
+      const raceSrcDir = path.join(projectRoot, 'native', 'Race');
       const raceDestDir = path.join(projectRoot, 'ios', projectName, 'Race');
 
       if (!fs.existsSync(raceDestDir)) {
@@ -150,6 +152,8 @@ const withSlitScanPlugin = (config) => {
         if (fs.existsSync(srcPath)) {
           fs.copyFileSync(srcPath, destPath);
           console.log(`Copied ${file} to ${destPath}`);
+        } else {
+          console.warn(`Warning: Source file not found: ${srcPath}`);
         }
       }
 

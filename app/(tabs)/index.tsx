@@ -6,8 +6,7 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 interface TimingMode {
   id: string;
   title: string;
-  description: string;
-  icon: string;
+  subtitle: string;
   available: boolean;
   route?: string;
 }
@@ -15,32 +14,28 @@ interface TimingMode {
 const TIMING_MODES: TimingMode[] = [
   {
     id: 'photo-finish',
-    title: 'Photo-Finish',
-    description: 'High-speed camera detection at 240fps. Place your phone at the finish line.',
-    icon: 'camera.viewfinder',
+    title: 'Photo Finish',
+    subtitle: '240fps camera detection',
     available: true,
     route: '/photo-finish',
   },
   {
     id: 'multi-phone',
-    title: 'Multi-Phone Race',
-    description: 'Use two phones for start and finish line timing with clock sync.',
-    icon: 'antenna.radiowaves.left.and.right',
+    title: 'Multi-Phone',
+    subtitle: 'Two phones, synced timing',
     available: true,
     route: '/race',
   },
   {
     id: 'sound-start',
     title: 'Sound Start',
-    description: 'Detect starting gun or clap sound to trigger timing.',
-    icon: 'waveform',
+    subtitle: 'Audio trigger detection',
     available: false,
   },
   {
     id: 'flying-start',
     title: 'Flying Start',
-    description: 'Time from when the runner crosses the start gate at speed.',
-    icon: 'figure.run',
+    subtitle: 'Time from gate crossing',
     available: false,
   },
 ];
@@ -49,22 +44,19 @@ function ModeCard({ mode, onPress }: { mode: TimingMode; onPress: () => void }) 
   const isGlassAvailable = isLiquidGlassAvailable();
 
   const cardContent = (
-    <>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardIcon}>{mode.icon}</Text>
-        <Text style={[styles.cardTitle, !mode.available && styles.cardTitleDisabled]}>
-          {mode.title}
-        </Text>
-        {!mode.available && (
-          <View style={styles.comingSoonBadge}>
-            <Text style={styles.comingSoonText}>Soon</Text>
-          </View>
-        )}
-      </View>
-      <Text style={[styles.cardDescription, !mode.available && styles.cardDescriptionDisabled]}>
-        {mode.description}
+    <View style={styles.cardContent}>
+      <Text style={[styles.cardTitle, !mode.available && styles.cardTitleDisabled]}>
+        {mode.title}
       </Text>
-    </>
+      <Text style={[styles.cardSubtitle, !mode.available && styles.cardSubtitleDisabled]}>
+        {mode.subtitle}
+      </Text>
+      {!mode.available && (
+        <View style={styles.comingSoonBadge}>
+          <Text style={styles.comingSoonText}>Coming Soon</Text>
+        </View>
+      )}
+    </View>
   );
 
   // Use GlassView on iOS 26+, fallback to regular View otherwise
@@ -154,57 +146,49 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   modesGrid: {
-    gap: 16,
+    gap: 12,
   },
   card: {
-    borderRadius: 16,
-    padding: 20,
-    minHeight: 120,
+    borderRadius: 14,
+    padding: 18,
   },
   cardFallback: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   cardDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 10,
-  },
-  cardIcon: {
-    fontSize: 20,
-    color: '#007AFF',
+  cardContent: {
+    gap: 4,
   },
   cardTitle: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    flex: 1,
   },
   cardTitleDisabled: {
-    color: '#888',
-  },
-  cardDescription: {
-    color: '#aaa',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  cardDescriptionDisabled: {
     color: '#666',
   },
+  cardSubtitle: {
+    color: '#888',
+    fontSize: 14,
+  },
+  cardSubtitleDisabled: {
+    color: '#555',
+  },
   comingSoonBadge: {
-    backgroundColor: 'rgba(255, 149, 0, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 149, 0, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 6,
   },
   comingSoonText: {
     color: '#FF9500',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
 });

@@ -136,7 +136,7 @@ export default function RaceSync() {
 
         <View style={styles.roleIndicator}>
           <Ionicons
-            name={role === 'start' ? 'flag' : 'checkered-flag'}
+            name={role === 'start' ? 'flag' : 'trophy'}
             size={24}
             color={role === 'start' ? '#00C853' : '#FF9500'}
           />

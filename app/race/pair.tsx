@@ -6,9 +6,13 @@ import {
   StyleSheet,
   TextInput,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRace } from '../../src/race/RaceContext';
 import { RaceRole } from '../../src/race/transport/types';
@@ -16,6 +20,7 @@ import { RaceRole } from '../../src/race/transport/types';
 export default function RacePair() {
   const { role: roleParam } = useLocalSearchParams<{ role: string }>();
   const role = roleParam as RaceRole;
+  const insets = useSafeAreaInsets();
 
   const {
     roomCode,
@@ -68,11 +73,13 @@ export default function RacePair() {
     }
   };
 
-  const handleBack = async () => {
+  const handleBack = () => {
+    Keyboard.dismiss();
     if (mode !== 'select') {
-      await disconnect();
+      disconnect();
       setMode('select');
       setInputCode('');
+      setError(null);
     } else {
       router.back();
     }
@@ -138,6 +145,10 @@ export default function RacePair() {
           </>
         )}
       </View>
+
+      <TouchableOpacity style={styles.cancelButton} onPress={handleBack}>
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
     </>
   );
 
@@ -154,7 +165,6 @@ export default function RacePair() {
         placeholderTextColor="#555"
         autoCapitalize="characters"
         maxLength={6}
-        autoFocus
       />
 
       <TouchableOpacity
@@ -171,23 +181,38 @@ export default function RacePair() {
           <Text style={styles.joinButtonText}>Join</Text>
         )}
       </TouchableOpacity>
+
+      <TouchableOpacity style={styles.cancelButton} onPress={handleBack}>
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
     </>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <Ionicons name="chevron-back" size={28} color="#fff" />
-      </TouchableOpacity>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={28} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.content}>
-        {mode === 'select' && renderSelect()}
-        {mode === 'create' && renderCreate()}
-        {mode === 'join' && renderJoin()}
+        <KeyboardAvoidingView
+          style={styles.content}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          {mode === 'select' && renderSelect()}
+          {mode === 'create' && renderCreate()}
+          {mode === 'join' && renderJoin()}
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <Text style={styles.errorText}>{error}</Text>}
+        </KeyboardAvoidingView>
       </View>
-    </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -196,17 +221,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
   backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 16,
-    zIndex: 10,
-    padding: 8,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 100,
+    paddingTop: 16,
   },
   title: {
     color: '#fff',
@@ -304,5 +332,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginTop: 16,
+  },
+  cancelButton: {
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  cancelButtonText: {
+    color: '#ff6666',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

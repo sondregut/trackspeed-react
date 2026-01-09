@@ -1,91 +1,44 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useHistoryStore } from '../../src/store/historyStore';
 
-interface SettingRowProps {
-  label: string;
-  value?: string;
-  onPress?: () => void;
-  isDestructive?: boolean;
-  showChevron?: boolean;
-}
-
-function SettingRow({ label, value, onPress, isDestructive, showChevron }: SettingRowProps) {
-  const content = (
-    <View style={styles.settingRow}>
-      <Text style={[styles.settingLabel, isDestructive && styles.settingLabelDestructive]}>
-        {label}
-      </Text>
-      <View style={styles.settingRight}>
-        {value && <Text style={styles.settingValue}>{value}</Text>}
-        {showChevron && <Text style={styles.chevron}>chevron.right</Text>}
-      </View>
-    </View>
-  );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        {content}
-      </TouchableOpacity>
-    );
-  }
-
-  return content;
-}
-
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
-  const isGlassAvailable = Platform.OS === 'ios' && isLiquidGlassAvailable();
-
-  if (isGlassAvailable) {
-    return (
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <GlassView style={styles.sectionContent}>
-          {children}
-        </GlassView>
-      </View>
-    );
-  }
-
+function StatCard({ value, label, icon }: { value: string; label: string; icon: string }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={[styles.sectionContent, styles.sectionContentFallback]}>
-        {children}
-      </View>
+    <View style={styles.statCard}>
+      <Ionicons name={icon as any} size={20} color="#007AFF" style={styles.statIcon} />
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const clearHistory = useHistoryStore((state) => state.clearHistory);
-  const sessionsCount = useHistoryStore((state) => state.sessions.length);
+  const router = useRouter();
+  const sessions = useHistoryStore((state) => state.sessions);
 
-  const handleClearHistory = () => {
-    if (sessionsCount === 0) {
-      Alert.alert('No History', 'There are no sessions to clear.');
-      return;
-    }
+  // Calculate stats
+  const totalSessions = sessions.length;
+  const photoFinishSessions = sessions.filter(s => s.mode === 'photo-finish').length;
+  const multiPhoneSessions = sessions.filter(s => s.mode === 'multi-phone').length;
 
-    Alert.alert(
-      'Clear History',
-      `Are you sure you want to delete all ${sessionsCount} session${sessionsCount !== 1 ? 's' : ''}? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: clearHistory,
-        },
-      ]
-    );
-  };
+  // Get best time (lowest elapsed time)
+  const bestTime = sessions.reduce((best, session) => {
+    const elapsed = session.stats?.elapsedTime || Infinity;
+    return elapsed < best ? elapsed : best;
+  }, Infinity);
 
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const bestTimeStr = bestTime === Infinity ? '--' : `${bestTime.toFixed(2)}s`;
+
+  // Get average time
+  const validTimes = sessions
+    .map(s => s.stats?.elapsedTime)
+    .filter((t): t is number => t !== undefined && t > 0);
+  const avgTime = validTimes.length > 0
+    ? (validTimes.reduce((a, b) => a + b, 0) / validTimes.length).toFixed(2)
+    : '--';
 
   return (
     <View style={styles.container}>
@@ -93,60 +46,91 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 100 },
+          { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Profile</Text>
-        <Text style={styles.subtitle}>Settings & Preferences</Text>
+        {/* Header with Settings */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Profile</Text>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
 
-        {/* Detection Settings */}
-        <SettingsSection title="Detection">
-          <SettingRow label="Trigger Threshold" value="10%" />
-          <SettingRow label="Pre-trigger Buffer" value="0.8s" />
-          <SettingRow label="Post-trigger Buffer" value="0.4s" />
-          <SettingRow label="Detection Band" value="20% - 90%" />
-        </SettingsSection>
-
-        {/* Camera Settings */}
-        <SettingsSection title="Camera">
-          <SettingRow label="Target FPS" value="240" />
-          <SettingRow label="Resolution" value="1920x1080" />
-        </SettingsSection>
-
-        {/* Feedback Settings */}
-        <SettingsSection title="Feedback">
-          <SettingRow label="Haptic Feedback" value="Enabled" />
-          <SettingRow label="Sound Feedback" value="Enabled" />
-          <SettingRow label="Flash on Trigger" value="Enabled" />
-        </SettingsSection>
-
-        {/* This Device (Future) */}
-        <SettingsSection title="This Device">
-          <SettingRow label="Device Name" value="My iPhone" />
-          <SettingRow label="Role" value="Standalone" />
-          <View style={styles.comingSoonBanner}>
-            <Text style={styles.comingSoonText}>
-              Multi-phone support coming soon. Connect multiple devices as timing gates.
-            </Text>
+        {/* Profile Avatar */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatar}>
+            <Ionicons name="person" size={48} color="#666" />
           </View>
-        </SettingsSection>
+          <Text style={styles.userName}>Athlete</Text>
+          <Text style={styles.userSubtitle}>Sprint Timer MVP</Text>
+        </View>
 
-        {/* Data */}
-        <SettingsSection title="Data">
-          <SettingRow label="Sessions Saved" value={String(sessionsCount)} />
-          <SettingRow
-            label="Clear All History"
-            onPress={handleClearHistory}
-            isDestructive
-          />
-        </SettingsSection>
+        {/* Stats Grid */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Your Stats</Text>
+          <View style={styles.statsGrid}>
+            <StatCard value={String(totalSessions)} label="Total Runs" icon="fitness" />
+            <StatCard value={bestTimeStr} label="Best Time" icon="trophy" />
+            <StatCard value={avgTime === '--' ? '--' : `${avgTime}s`} label="Avg Time" icon="timer" />
+            <StatCard value={String(photoFinishSessions)} label="Photo Finish" icon="camera" />
+          </View>
+        </View>
 
-        {/* About */}
-        <SettingsSection title="About">
-          <SettingRow label="Version" value={appVersion} />
-          <SettingRow label="Build" value="SDK 54" />
-        </SettingsSection>
+        {/* Recent Activity */}
+        <View style={styles.activitySection}>
+          <Text style={styles.sectionTitle}>Recent Activity</Text>
+          {sessions.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="timer-outline" size={48} color="#333" />
+              <Text style={styles.emptyTitle}>No runs yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Complete your first timed run to see stats here
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.recentList}>
+              {sessions.slice(0, 5).map((session, index) => (
+                <View key={session.id || index} style={styles.recentItem}>
+                  <View style={styles.recentIcon}>
+                    <Ionicons
+                      name={session.mode === 'photo-finish' ? 'camera' : 'phone-portrait'}
+                      size={18}
+                      color="#007AFF"
+                    />
+                  </View>
+                  <View style={styles.recentInfo}>
+                    <Text style={styles.recentTime}>
+                      {session.stats?.elapsedTime?.toFixed(3) || '--'}s
+                    </Text>
+                    <Text style={styles.recentDate}>
+                      {new Date(session.timestamp).toLocaleDateString()}
+                    </Text>
+                  </View>
+                  <Text style={styles.recentMode}>
+                    {session.mode === 'photo-finish' ? 'Photo' : 'Multi'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.actionsSection}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(tabs)/history')}
+          >
+            <Ionicons name="list" size={20} color="#fff" />
+            <Text style={styles.actionText}>View All History</Text>
+            <Ionicons name="chevron-forward" size={18} color="#666" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -163,19 +147,47 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
   title: {
     color: '#fff',
     fontSize: 34,
     fontWeight: '700',
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userName: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '600',
     marginBottom: 4,
   },
-  subtitle: {
-    color: '#888',
-    fontSize: 17,
-    marginBottom: 30,
-  },
-  section: {
-    marginBottom: 24,
+  userSubtitle: {
+    color: '#666',
+    fontSize: 15,
   },
   sectionTitle: {
     color: '#888',
@@ -183,57 +195,117 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: 12,
   },
-  sectionContent: {
-    borderRadius: 12,
+  statsSection: {
+    marginBottom: 28,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statIcon: {
+    marginBottom: 8,
+  },
+  statValue: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  statLabel: {
+    color: '#666',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  activitySection: {
+    marginBottom: 28,
+  },
+  emptyState: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    color: '#888',
+    fontSize: 17,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    color: '#555',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  recentList: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  sectionContentFallback: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  settingRow: {
+  recentItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  settingLabel: {
+  recentIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,122,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  recentInfo: {
+    flex: 1,
+  },
+  recentTime: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  recentDate: {
+    color: '#666',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  recentMode: {
+    color: '#555',
+    fontSize: 12,
+    fontWeight: '500',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  actionsSection: {
+    marginBottom: 20,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  actionText: {
+    flex: 1,
     color: '#fff',
     fontSize: 16,
-  },
-  settingLabelDestructive: {
-    color: '#FF3B30',
-  },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  settingValue: {
-    color: '#888',
-    fontSize: 16,
-  },
-  chevron: {
-    color: '#666',
-    fontSize: 14,
-  },
-  comingSoonBanner: {
-    backgroundColor: 'rgba(255, 149, 0, 0.1)',
-    padding: 12,
-    margin: 12,
-    marginTop: 0,
-    borderRadius: 8,
-  },
-  comingSoonText: {
-    color: '#FF9500',
-    fontSize: 13,
-    lineHeight: 18,
+    fontWeight: '500',
   },
 });
